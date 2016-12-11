@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Term</title>
+<script src="tty.js"></script>
+<style type="text/css">
+</style>
+</head>
+
+<body>
+<h1>Term</h1>
+<hr>
+<div id=here><button onclick="test();">click</button></div>
+<hr>
+
+<button onclick="tt.write('\007'); tt.focus();">bell</button>
+<button onclick="tt.write('\033c'); tt.focus();">ESC c</button>
+<button onclick="tt.write('\033]ignore this text\033\\'); tt.focus();">\033]...\033\</button>
+<button onclick="tt.write('\033[s'); tt.focus();">CSI s</button>
+<button onclick="tt.write('\033[u'); tt.focus();">CSI u</button>
+<button onclick="tt.write('\033'+'7'); tt.focus();">ESC 7</button>
+<button onclick="tt.write('\033'+'8'); tt.focus();">ESC 8</button>
+<button onclick="tt.write('\033[?25l'); tt.focus();">cursor off</button>
+<button onclick="tt.write('\033[?25h'); tt.focus();">cursor on</button>
+
+<script><!--
+function test() {
+ tt = tty({at:'here'});
+ tt.focus();
+ tt.write('Hello\nTerminal!\n\n');
+ tt.write('\033[1');
+ tt.write('m bold\033[0m\tnormal\n');
+ tt.write('\033[30;47m black\t\033[1mgray \033[m\n');
+ tt.write('\033[31m red\t\033[1mbright \033[m\n');
+ tt.write('\033[32m green\t\033[1mbright \033[m\n');
+ tt.write('\033[33m yellow\t\033[1mbright \033[m\n');
+ tt.write('\033[34m blue\t\033[1mbright \033[m\n');
+ tt.write('\033[35mmagenta\t\033[1mbright \033[m\n');
+ tt.write('\033[36m cyan\t\033[1mbright \033[m\n');
+ tt.write('\033[37m white\t\033[1mbright \033[m\n');
+ tt.write(' \033[2;8f');
+ //tt.write('\033[1J');
+}
+--></script>
+
+</body>
+</html>
