@@ -1,6 +1,7 @@
 (function() {
 
   function TTY(rows, cols, buff) {
+    var self = this;
     this._rows = rows;
     this._cols = cols;
     this._buff = buff;
@@ -16,11 +17,15 @@
     this._b = [];    // back buffer
     this._dirty = false;
     this._color = ['#000', '#b00', '#0b0', '#bb0', '#00b', '#b0b', '#0bb', '#bbb', '#777', '#f00', '#0f0', '#ff0', '#00f', '#f0f', '#0ff', '#fff'];
-    var self = this;
+    this._beep = 0;
+    this._bell = function() { self._flash(); }
+    this._bell_ = function() { self._flash_(); }
     this._refresh = function() {
       self._update();
       self._dirty = false;
     }
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) this._ac = new AudioContext();
   }
   TTY.prototype._create = function(at) {
     var self = this;
@@ -56,6 +61,15 @@
     scroll.style.width = 'auto';
 
     main.style.height = this._rows * this._dy + 'px';
+
+    main.style.userSelect = 'none';
+    main.style.MozUserSelect = 'none';
+    main.style.WebkitUserSelect = 'none';
+    main.style.MsUserSelect = 'none';
+    main.style.KhtmlUserSelect = 'none';
+    main.style.cursor = 'default';
+    //main.ondragstart = function() { return false; };
+    //main.onselectstart = main.ondragstart;
 
     var screen = document.createElement('div');
     screen.style.position = 'relative';
@@ -176,6 +190,23 @@ return;
     this._position();
   }
   TTY.prototype._flash = function() {
+    this._main.style.backgroundColor = '#fff';
+    if (this._ac) {
+      this._osc = this._ac.createOscillator();
+      this._osc.connect(this._ac.destination);
+      if (!this._osc.start) this._osc.start = this._osc.noteOn;
+      this._osc.start(0);
+    }
+    setTimeout(this._bell_, 100);
+  }
+  TTY.prototype._flash_ = function() {
+    this._main.style.backgroundColor = '#000';
+    if (this._osc) {
+      if (!this._osc.stop) this._osc.stop = this._osc.noteOff;
+      this._osc.stop(0);
+    }
+    this._beep--;
+    if (this._beep) setTimeout(this._bell, 10);
   }
   TTY.prototype._position = function() {
     this._caret.style.left = this._x * this._dx + 1 + 'px';
@@ -322,6 +353,10 @@ return;
             }
           }
           else { wait = true; i--; }
+          break;
+        case '\007':  // bell
+          if (this._beep < 5) this._beep++;
+          if (this._beep == 1) setTimeout(this._bell, 0);
           break;
         case '\010':  // bkspace
           if (this._x) this._x--;
