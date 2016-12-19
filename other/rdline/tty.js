@@ -220,16 +220,15 @@ return;
     if (j >= this._o.length) return; // need more input
     var c = this._o[j];
     var cc;
+    var ig = false;
+    var p = '';
     switch (c) {
       case '[':
         j++;
         if (j >= this._o.length) return;
         c = this._o[j]; cc = c.charCodeAt(0);
-        if (cc >= 32 && cc <= 47) { // ignore private codes
-          for (j++; j < this._o.length; j++) {
-            if (this._o[j].charCodeAt(0) >= 64) return { n: j - i };
-          }
-          return; // need more input
+        if ((cc >= 33 && cc <= 47) || (cc >= 60 && cc <= 63)) { // private codes
+          p = c; j++;
         }
         var n = '';
         var a = [];
@@ -239,9 +238,12 @@ return;
           else if (c == ';') {
             a.push(parseInt(n)); n = '';
           }
+          else if ((cc >= 32 && cc <= 47) || cc == 58) { // ignore
+            ig = true;
+          }
           else { // if (cc >= 64)
             a.push(parseInt(n));
-            return { n: j - i, c: '[', t: c, a: a.slice() };
+            return ig ? { n: j - i } : { n: j - i, c: '[', t: c, p: p, a: a.slice() };
           }
         }
         return; // need more input
@@ -290,6 +292,10 @@ return;
               this._bp = true;
             }
             else if (esc.c == '[') {
+              if (esc.p == '?') {
+                //alert('?-' + esc.t);
+              }
+              if (esc.p != '') break;
               switch (esc.t) {
                 case 'A': // cursor up
                   this._y -= isNaN(esc.a[0]) ? 1 : esc.a[0];
