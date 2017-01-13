@@ -8,7 +8,11 @@
     this._x = 0;
     this._y = 0;
     this._t = 0;     // top line
-    this._c = true;  // cursor blink
+    this._x0 = 0;    // saved cursor position
+    this._y0 = 0;
+    this._c = false; // cursor blink
+    this._d = true;  // cursor active
+    this._e = true;  // cursor enabled
     this._a = {};    // current attribute
     this._i = [];    // input buffer
     this._o = [];    // output buffer
@@ -82,36 +86,61 @@
 
     var caret = document.createElement('div');
     caret.style.display = 'inline-block';
-    caret.style.width = this._dx - 2 + 'px';
-    caret.style.height = '3px';
-    caret.style.backgroundColor = '#fff';
-    caret.style.color = '#000';
+    caret.style.width = this._dx + 'px';
+    caret.style.height = this._dy + 'px';
+    //caret.style.backgroundColor = '#f00';
     caret.style.position = 'absolute';
 
-    var hide = document.createElement('div');
-    hide.style.display = 'inline-block';
-    hide.style.padding = '0';
-    hide.style.margin = '0';
-    hide.style.border = '0';
-    hide.style.width = '0';
-    hide.style.height = '0';
-    hide.style.position = 'absolute';
-    hide.style.overflow = 'hidden';
+    var cursor = document.createElement('div');
+    cursor.style.display = 'inline-block';
+    cursor.style.width = this._dx - 2 + 'px';
+    cursor.style.height = '4px';
+    cursor.style.backgroundColor = '#fff';
+    cursor.style.color = '#000';
+    cursor.style.position = 'absolute';
+    cursor.style.left = '1px';
+    cursor.style.bottom = '2px';
+    caret.appendChild(cursor);
+
+    var cursor_ = document.createElement('div');
+    cursor_.style.display = 'inline-block';
+    cursor_.style.width = this._dx - 2 + 'px';
+    cursor_.style.height = '4px';
+    cursor_.style.border = 'solid 1px #00f';
+    //cursor_.style.color = '#000';
+    cursor_.style.position = 'absolute';
+    cursor_.style.left = '0px';
+    cursor_.style.bottom = '1px';
+    caret.appendChild(cursor_);
+
+    var hdd = document.createElement('div');
+    hdd.style.display = 'inline-block';
+    hdd.style.padding = '0';
+    hdd.style.margin = '0';
+    hdd.style.border = '0';
+    hdd.style.width = '0';
+    hdd.style.height = '0';
+    hdd.style.position = 'absolute';
+    hdd.style.overflow = 'hidden';
+    //hdd.style.opacity = '0.05';
 
     var tarea = document.createElement('textarea');
     tarea.style.padding = '0';
     tarea.style.margin = '0';
     tarea.style.border = '0';
-    tarea.style.opacity = '0.1';
+    tarea.style.cursor = 'default';
+    //tarea.style.opacity = '0.05';
     tarea.style.outline = 'none';
+    tarea.style.backgroundColor = '#777';
+    tarea.spellcheck = false;
 
-    hide.appendChild(tarea);
+    hdd.appendChild(tarea);
 
     var pad = document.createElement('div');
 
     screen.appendChild(pad);
     screen.appendChild(caret);
-    screen.appendChild(hide);
+    screen.appendChild(hdd);
     scroll.appendChild(screen);
     main.appendChild(scroll);
 
@@ -120,22 +149,42 @@
     this._screen = screen;
     this._pad = pad;
     this._caret = caret;
-    this._hide = hide;
+    this._hdd = hdd;
     this._tarea = tarea;
     this._position();
     this._blink = function() {
-      self._c = !self._c;
-      caret.style.visibility = self._c ? 'visible' : 'hidden';
+      if (self._d && self._e) {
+        self._c = !self._c;
+        cursor.style.visibility = self._c ? 'visible' : 'hidden';
+        setTimeout(self._blink, 500);
+      }
     }
-    setInterval(this._blink, 500);
+    this._blink();
 
-    main.addEventListener("focus", function() { tarea.focus(); }, false);
+    setfocus_ = function() { tarea.focus(); }
+    setfocus = function() { setTimeout(setfocus_, 0); }
+    main.addEventListener("focus", setfocus_, false);
+
+    tarea.addEventListener("focus", function() {
+console.log('tarea focus');
+    }, false);
+
+    tarea.addEventListener("blur", function() {
+console.log('tarea blur');
+    }, false);
+
     tarea.addEventListener("input", function() {
       var val = tarea.value;
       for (var i = 0; i < val.length; i++) self._emit(val[i]);
       tarea.value = '';
     }, false);
+
+    tarea.addEventListener("keydown", function(e) {
+console.log('key down', e.keyCode);
+    }, false);
+
     tarea.addEventListener("keypress", function(e) {
+console.log('key press', e.keyCode);
       if (e.charCode) {
 return;
 //        if (!e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -152,16 +201,30 @@ return;
       }
 
     }, false);
-    var unhide = function(e) {
+
+    // handle the right click menu
+    var hddcount = 0; // need for MSIE
+    var move = function(e) {
       var r = screen.getBoundingClientRect();
-      hide.style.left = (e.clientX - Math.ceil(r.left)) + 'px';
-      hide.style.top = (e.clientY - Math.ceil(r.top)) + 'px';
-      hide.style.width = '1px';
-      hide.style.height = '1px';
-      setTimeout(function() { hide.style.width = '0'; hide.style.height = '0'; }, 0);
+      hdd.style.left = (e.clientX - Math.ceil(r.left)) + 'px';
+      hdd.style.top = (e.clientY - Math.ceil(r.top)) + 'px';
+    }
+    var unhide = function(e) {
+      move(e);
+      hdd.style.width = '1px';
+      hdd.style.height = '1px';
+      hddcount++;
+      setfocus_();
+      setfocus();
+    }
+    var hide = function(n) {
+      setTimeout(function() {
+        if (n == hddcount) { hdd.style.width = '0'; hdd.style.height = '0'; }
+      }, 0);
     }
     screen.addEventListener("mousedown", unhide, false);
-    screen.addEventListener("mouseup", unhide, false);
+    screen.addEventListener("mouseup", function(e) { move(e); hide(hddcount); }, false);
+    screen.addEventListener("mousemove", move, false);
   }
   TTY.prototype._update = function() {
     while (this._pad.lastChild) this._pad.removeChild(this._pad.lastChild);
@@ -209,10 +272,10 @@ return;
     if (this._beep) setTimeout(this._bell, 10);
   }
   TTY.prototype._position = function() {
-    this._caret.style.left = this._x * this._dx + 1 + 'px';
-    this._caret.style.top = (this._y + 1) * this._dy - 5 + 'px';
-    this._hide.style.left = this._x * this._dx + 'px';
-    this._hide.style.top = this._y * this._dy + 'px';
+    this._caret.style.left = this._x * this._dx + 'px';
+    this._caret.style.top = this._y * this._dy + 'px';
+    this._hdd.style.left = this._x * this._dx + 'px';
+    this._hdd.style.top = this._y * this._dy + 'px';
     this._scroll.scrollTop = this._t * this._dy;
   }
   TTY.prototype._esc = function(i) {
@@ -288,12 +351,28 @@ return;
             if (esc.c == 'c') { // reset
               this._x = 0; this._y = 0; this._t = 0; this._b = [];
             }
-            if (esc.c == ']' || esc.c == 'X' || esc.c == '^' || esc.c == '_') { // bypass
+            else if (esc.c == '7') { // save cursor position
+              this._x0 = this._x;
+              this._y0 = this._y - this._t;
+            }
+            else if (esc.c == '8') { // restore cursor position
+              this._x = this._x0;
+              if (this._x > this._cols - 1) this._x = this._cols - 1;
+              this._y = this._y0 + this._t;
+              if (this._y < this._t) this._y = this._t;
+              if (this._y > this._t + this._rows - 1) this._y = this._t + this._rows - 1;
+            }
+            else if (esc.c == ']' || esc.c == 'X' || esc.c == '^' || esc.c == '_') { // bypass
               this._bp = true;
             }
             else if (esc.c == '[') {
               if (esc.p == '?') {
-                //alert('?-' + esc.t);
+                if (esc.a.length == 1) {
+                  if (esc.a[0] == 25) { // cursor on/off
+                    if (esc.t == 'l') { this._d = false; this._caret.style.visibility = 'hidden'; }
+                    else if (esc.t == 'h') this._d = true;
+                  }
+                }
               }
               if (esc.p != '') break;
               switch (esc.t) {
@@ -354,6 +433,17 @@ return;
                     else if (esc.a[k] >= 40 && esc.a[k] <= 47) this._a.b = esc.a[k] - 40;
                     else if (esc.a[k] == 49) delete this._a.b;
                   }
+                  break;
+                case 's': // save cursor position
+                  this._x0 = this._x;
+                  this._y0 = this._y - this._t;
+                  break;
+                case 'u': // restore cursor position
+                  this._x = this._x0;
+                  if (this._x > this._cols - 1) this._x = this._cols - 1;
+                  this._y = this._y0 + this._t;
+                  if (this._y < this._t) this._y = this._t;
+                  if (this._y > this._t + this._rows - 1) this._y = this._t + this._rows - 1;
                   break;
               }
             }
