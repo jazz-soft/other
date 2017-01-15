@@ -11,7 +11,7 @@
     this._x0 = 0;    // saved cursor position
     this._y0 = 0;
     this._c = false; // cursor blink
-    this._d = true;  // cursor active
+    this._d = true;  // cursor in focus
     this._e = true;  // cursor enabled
     this._a = {};    // current attribute
     this._i = [];    // input buffer
@@ -97,6 +97,7 @@
     cursor.style.height = '4px';
     cursor.style.backgroundColor = '#fff';
     cursor.style.color = '#000';
+    cursor.style.opacity = '.8';
     cursor.style.position = 'absolute';
     cursor.style.left = '1px';
     cursor.style.bottom = '2px';
@@ -106,8 +107,7 @@
     cursor_.style.display = 'inline-block';
     cursor_.style.width = this._dx - 2 + 'px';
     cursor_.style.height = '4px';
-    cursor_.style.border = 'solid 1px #00f';
-    //cursor_.style.color = '#000';
+    cursor_.style.border = 'solid 1px #bbb';
     cursor_.style.position = 'absolute';
     cursor_.style.left = '0px';
     cursor_.style.bottom = '1px';
@@ -152,25 +152,40 @@
     this._hdd = hdd;
     this._tarea = tarea;
     this._position();
+
+    // caret functions
+    var blinking = false;
     this._blink = function() {
       if (self._d && self._e) {
+        blinking = true;
         self._c = !self._c;
         cursor.style.visibility = self._c ? 'visible' : 'hidden';
         setTimeout(self._blink, 500);
       }
+      else blinking = false;
     }
-    this._blink();
+    this._updatecaret = function() {
+      if (self._d && self._e && !blinking) {
+        self._c = false;
+        self._blink();
+      }
+      if (!self._d || !self._e) cursor.style.visibility = 'hidden';
+      cursor_.style.visibility = self._d ? 'hidden' : 'visible';
+    }
+    this._updatecaret();
 
     setfocus_ = function() { tarea.focus(); }
     setfocus = function() { setTimeout(setfocus_, 0); }
+    updatecaret = function() { setTimeout(self._updatecaret, 0); }
     main.addEventListener("focus", setfocus_, false);
 
     tarea.addEventListener("focus", function() {
-console.log('tarea focus');
+      self._d = true;
+      updatecaret();
     }, false);
-
     tarea.addEventListener("blur", function() {
-console.log('tarea blur');
+      self._d = false;
+      updatecaret();
     }, false);
 
     tarea.addEventListener("input", function() {
@@ -369,8 +384,8 @@ return;
               if (esc.p == '?') {
                 if (esc.a.length == 1) {
                   if (esc.a[0] == 25) { // cursor on/off
-                    if (esc.t == 'l') { this._d = false; this._caret.style.visibility = 'hidden'; }
-                    else if (esc.t == 'h') this._d = true;
+                    if (esc.t == 'l') { this._e = false; this._updatecaret(); }
+                    else if (esc.t == 'h') { this._e = true; this._updatecaret(); }
                   }
                 }
               }
